@@ -3,7 +3,9 @@
   "version": "2.1.2",
   "homepage": "https://github.com/conormag/jquery.sparkline",
   "description": "Distribution for gwatts/jquery.sparkline",
-  "main": "dist/jquery.sparkline.js",
+  "main": [
+    "dist/jquery.sparkline.js"
+  ],
   "moduleType": [
     "amd",
     "globals"
