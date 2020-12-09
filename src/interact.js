@@ -18,6 +18,7 @@
             if (this.over) {
                 this.updateDisplay();
             }
+            return this; //To make this class instance available with the sparkline instance we return this.
         },
 
         registerCanvas: function (canvas) {
@@ -130,6 +131,36 @@
             }
             if (result === null) {
                 this.mouseleave();
+            }
+        },
+
+        highlightPieSlice:function(index){//This method is used for highlight the pieSlice programmatically by calling this method with the particular value index of the pie segment.
+            var splist = this.splist,
+                spcount = splist.length,
+                needsRefresh = false, sp, i, result;
+            if(index !== undefined){
+                for (i = 0; i < spcount; i++) {
+                    sp = splist[i];
+                    result = sp.setRegionHighlightByIndex(index);
+                    if (result) {
+                        needsRefresh = true;
+                    }
+                }
+                if (needsRefresh) {
+                    this.canvas.render();
+                }
+            }
+            else{
+                for (i = 0; i < spcount; i++) {
+                    sp = splist[i];
+                    if (sp.clearRegionHighlight()) {
+                        needsRefresh = true;
+                    }
+                }
+    
+                if (needsRefresh) {
+                    this.canvas.render();
+                }
             }
         }
     });

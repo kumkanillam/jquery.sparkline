@@ -62,7 +62,9 @@
                 sp.render();
 
                 if (mhandler) {
-                    mhandler.registerSparkline(sp);
+                    //Here the inteact instance is set with the returning sparkline object, so we can access this property from the return of this method to access the functions available in the MouseHandler class.
+                    //currently we use this property to call the method "highlightPieSlice" by programmatically from the MouseHandler to highlight the pie segment.
+                    this.interactInstance = mhandler.registerSparkline(sp);
                 }
             };
             if (($(this).html() && !options.get('disableHiddenCheck') && $(this).is(':hidden')) || !$(this).parents('body').length) {
@@ -254,6 +256,23 @@
             return false;
         },
 
+        /**
+         * Highlight the pie slice item based on the index that equal to the pie segment value index.
+         */
+        setRegionHighlightByIndex: function(newRegionIndex){
+            var currentRegion = this.currentRegion,highlightEnabled = !this.options.get('disableHighlight');
+            if (currentRegion !== newRegionIndex) {
+                if (currentRegion !== undefined && highlightEnabled) {
+                    this.removeHighlight();
+                }
+                this.currentRegion = newRegionIndex;
+                if (newRegionIndex !== undefined && highlightEnabled) {
+                    this.renderHighlight();
+                }
+                return true;
+            }
+            return false;
+        },
         renderHighlight: function () {
             this.changeHighlight(true);
         },
