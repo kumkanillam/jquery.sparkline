@@ -24,7 +24,10 @@
             }
             this.total = total;
             this.initTarget();
-            this.radius = Math.floor(Math.min(this.canvasWidth, this.canvasHeight) / 2);
+            var radius = Math.floor(Math.min(this.canvasWidth, this.canvasHeight) / 2);
+            var highlightRadius = options.get('changeHighlightStyle') === true ? Math.ceil(radius/10) : 0;
+            this.highlightRadius = highlightRadius;//This property will help us to draw the highlighted pie slice bigger than others.
+            this.radius = radius;//If the changeHighlightStyle is true then we need to draw the pie smaller than the actual radius then only we can make the particular pie slice bigger than others when highlight.
         },
 
         getRegion: function (el, x, y) {
@@ -63,8 +66,12 @@
                 values = this.values,
                 total = this.total,
                 next = offset ? (2*Math.PI)*(offset/360) : 0,
+                changeHighlightStyle = options.get('changeHighlightStyle'),
+                position = radius,
+                highlightRadius = this.highlightRadius,
                 start, end, i, vlen, color;
-
+            if(changeHighlightStyle === true)//If the changeHighlightStyle property is true then we need to change the pie radius smaller than the highlighting pie size.
+                radius -= highlightRadius;
             vlen = values.length;
             for (i = 0; i < vlen; i++) {
                 start = next;
@@ -75,10 +82,13 @@
                 if (valuenum === i) {
                     color = options.get('sliceColors')[i % options.get('sliceColors').length];
                     if (highlight) {
-                        color = this.calcHighlightColor(color, options);
+                        if( changeHighlightStyle === true)//if the "changeHighlightStyle" property is true then the highlight will change to bigger slice instead of the light color style.
+                            radius += highlightRadius;
+                        else
+                            color = this.calcHighlightColor(color, options);
                     }
 
-                    return target.drawPieSlice(radius, radius, radius - borderWidth, start, end, undefined, color);
+                    return target.drawPieSlice(position, position, radius - borderWidth, start, end, undefined, color);
                 }
                 next = end;
             }
@@ -96,7 +106,12 @@
                 return;
             }
             if (borderWidth) {
-                target.drawCircle(radius, radius, Math.floor(radius - (borderWidth / 2)),
+                var position = radius,
+                    highlightRadius = this.highlightRadius,
+                    changeHighlightStyle = options.get('changeHighlightStyle');
+                if(changeHighlightStyle === true)
+                    radius -= highlightRadius;
+                target.drawCircle(position, position, Math.floor(radius - (borderWidth / 2)),
                     options.get('borderColor'), undefined, borderWidth).append();
             }
             for (i = values.length; i--;) {

@@ -102,7 +102,8 @@
                     '#dd4477', '#0099c6', '#990099'],
                 borderWidth: 0,
                 borderColor: '#000',
-                tooltipFormat: new SPFormat('<span style="color: {{color}}">&#9679;</span> {{value}} ({{percent.1}}%)')
+                tooltipFormat: new SPFormat('<span style="color: {{color}}">&#9679;</span> {{value}} ({{percent.1}}%)'),
+                changeHighlightStyle: false//property to change the pie slice highlighting effect
             },
             // Defaults for box plots
             box: {
