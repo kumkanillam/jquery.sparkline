@@ -2,7 +2,7 @@
 *
 * jquery.sparkline.js
 *
-* v2.1.3
+* v@VERSION@
 * (c) Splunk, Inc
 * Contact: Gareth Watts (gareth@splunk.com)
 * http://omnipotent.net/jquery.sparkline/
@@ -220,6 +220,7 @@
         line, bar, tristate, discrete, bullet, pie, box, defaultStyles, initStyles,
         VShape, VCanvas_base, VCanvas_canvas, VCanvas_vml, pending, shapeCount = 0;
 
+
     /**
      * Default configuration settings
      */
@@ -324,7 +325,8 @@
                     '#dd4477', '#0099c6', '#990099'],
                 borderWidth: 0,
                 borderColor: '#000',
-                tooltipFormat: new SPFormat('<span style="color: {{color}}">&#9679;</span> {{value}} ({{percent.1}}%)')
+                tooltipFormat: new SPFormat('<span style="color: {{color}}">&#9679;</span> {{value}} ({{percent.1}}%)'),
+                changeHighlightStyle: false//property to change the pie slice highlighting effect
             },
             // Defaults for box plots
             box: {
@@ -375,6 +377,7 @@
             'font: 10px arial, san serif;' +
             'text-align: left;' +
             '}';
+
 
     /**
      * Utilities
@@ -600,6 +603,7 @@
         }
     };
 
+
     // Provide a cross-browser interface to a few simple drawing primitives
     $.fn.simpledraw = function (width, height, useExisting, interact) {
         var target, mhandler;
@@ -655,6 +659,7 @@
         }
     };
 
+
     $.RangeMapClass = RangeMap = createClass({
         init: function (map) {
             var key, range, rangelist = [];
@@ -694,6 +699,7 @@
         return new RangeMap(map);
     };
 
+
     MouseHandler = createClass({
         init: function (el, options) {
             var $el = $(el);
@@ -714,6 +720,7 @@
             if (this.over) {
                 this.updateDisplay();
             }
+            return this; //To make this class instance available with the sparkline instance we return this.
         },
 
         registerCanvas: function (canvas) {
@@ -826,6 +833,36 @@
             }
             if (result === null) {
                 this.mouseleave();
+            }
+        },
+
+        highlightPieSlice:function(index){//This method is used for highlight the pieSlice programmatically by calling this method with the particular value index of the pie segment.
+            var splist = this.splist,
+                spcount = splist.length,
+                needsRefresh = false, sp, i, result;
+            if(index !== undefined){
+                for (i = 0; i < spcount; i++) {
+                    sp = splist[i];
+                    result = sp.setRegionHighlightByIndex(index);
+                    if (result) {
+                        needsRefresh = true;
+                    }
+                }
+                if (needsRefresh) {
+                    this.canvas.render();
+                }
+            }
+            else{
+                for (i = 0; i < spcount; i++) {
+                    sp = splist[i];
+                    if (sp.clearRegionHighlight()) {
+                        needsRefresh = true;
+                    }
+                }
+    
+                if (needsRefresh) {
+                    this.canvas.render();
+                }
             }
         }
     });
@@ -941,6 +978,7 @@
         }
     });
 
+
     initStyles = function() {
         addCSS(defaultStyles);
     };
@@ -1005,7 +1043,9 @@
                 sp.render();
 
                 if (mhandler) {
-                    mhandler.registerSparkline(sp);
+                    //Here the inteact instance is set with the returning sparkline object, so we can access this property from the return of this method to access the functions available in the MouseHandler class.
+                    //currently we use this property to call the method "highlightPieSlice" by programmatically from the MouseHandler to highlight the pie segment.
+                    this.interactInstance = mhandler.registerSparkline(sp);
                 }
             };
             if (($(this).html() && !options.get('disableHiddenCheck') && $(this).is(':hidden')) || !$(this).parents('body').length) {
@@ -1197,6 +1237,23 @@
             return false;
         },
 
+        /**
+         * Highlight the pie slice item based on the index that equal to the pie segment value index.
+         */
+        setRegionHighlightByIndex: function(newRegionIndex){
+            var currentRegion = this.currentRegion,highlightEnabled = !this.options.get('disableHighlight');
+            if (currentRegion !== newRegionIndex) {
+                if (currentRegion !== undefined && highlightEnabled) {
+                    this.removeHighlight();
+                }
+                this.currentRegion = newRegionIndex;
+                if (newRegionIndex !== undefined && highlightEnabled) {
+                    this.renderHighlight();
+                }
+                return true;
+            }
+            return false;
+        },
         renderHighlight: function () {
             this.changeHighlight(true);
         },
@@ -1355,6 +1412,7 @@
             target.render();
         }
     };
+
 
     /**
      * Line charts
@@ -1706,6 +1764,7 @@
         }
     });
 
+
     /**
      * Bar charts
      */
@@ -1962,6 +2021,7 @@
         }
     });
 
+
     /**
      * Tristate charts
      */
@@ -2060,6 +2120,7 @@
         }
     });
 
+
     /**
      * Discrete charts
      */
@@ -2125,6 +2186,7 @@
             return target.drawLine(x, ytop, x, ytop + lineHeight, color);
         }
     });
+
 
     /**
      * Bullet charts
@@ -2257,6 +2319,7 @@
         }
     });
 
+
     /**
      * Pie charts
      */
@@ -2283,7 +2346,10 @@
             }
             this.total = total;
             this.initTarget();
-            this.radius = Math.floor(Math.min(this.canvasWidth, this.canvasHeight) / 2);
+            var radius = Math.floor(Math.min(this.canvasWidth, this.canvasHeight) / 2);
+            var highlightRadius = options.get('changeHighlightStyle') === true ? Math.ceil(radius/10) : 0;
+            this.highlightRadius = highlightRadius;//This property will help us to draw the highlighted pie slice bigger than others.
+            this.radius = radius;//If the changeHighlightStyle is true then we need to draw the pie smaller than the actual radius then only we can make the particular pie slice bigger than others when highlight.
         },
 
         getRegion: function (el, x, y) {
@@ -2322,8 +2388,12 @@
                 values = this.values,
                 total = this.total,
                 next = offset ? (2*Math.PI)*(offset/360) : 0,
+                changeHighlightStyle = options.get('changeHighlightStyle'),
+                position = radius,
+                highlightRadius = this.highlightRadius,
                 start, end, i, vlen, color;
-
+            if(changeHighlightStyle === true)//If the changeHighlightStyle property is true then we need to change the pie radius smaller than the highlighting pie size.
+                radius -= highlightRadius;
             vlen = values.length;
             for (i = 0; i < vlen; i++) {
                 start = next;
@@ -2334,10 +2404,13 @@
                 if (valuenum === i) {
                     color = options.get('sliceColors')[i % options.get('sliceColors').length];
                     if (highlight) {
-                        color = this.calcHighlightColor(color, options);
+                        if( changeHighlightStyle === true)//if the "changeHighlightStyle" property is true then the highlight will change to bigger slice instead of the light color style.
+                            radius += highlightRadius;
+                        else
+                            color = this.calcHighlightColor(color, options);
                     }
 
-                    return target.drawPieSlice(radius, radius, radius - borderWidth, start, end, undefined, color);
+                    return target.drawPieSlice(position, position, radius - borderWidth, start, end, undefined, color);
                 }
                 next = end;
             }
@@ -2355,7 +2428,12 @@
                 return;
             }
             if (borderWidth) {
-                target.drawCircle(radius, radius, Math.floor(radius - (borderWidth / 2)),
+                var position = radius,
+                    highlightRadius = this.highlightRadius,
+                    changeHighlightStyle = options.get('changeHighlightStyle');
+                if(changeHighlightStyle === true)
+                    radius -= highlightRadius;
+                target.drawCircle(position, position, Math.floor(radius - (borderWidth / 2)),
                     options.get('borderColor'), undefined, borderWidth).append();
             }
             for (i = values.length; i--;) {
@@ -2368,6 +2446,7 @@
             target.render();
         }
     });
+
 
     /**
      * Box plots
@@ -2555,6 +2634,7 @@
         }
     });
 
+
     // Setup a very simple "virtual canvas" to make drawing the few shapes we need easier
     // This is accessible as $(foo).simpledraw()
 
@@ -2701,6 +2781,7 @@
             alert('render not implemented');
         }
     });
+
 
     VCanvas_canvas = createClass(VCanvas_base, {
         init: function (width, height, target, interact) {
@@ -2895,6 +2976,7 @@
 
     });
 
+
     VCanvas_vml = createClass(VCanvas_base, {
         init: function (width, height, target) {
             var groupel;
@@ -3059,5 +3141,6 @@
             }
         }
     });
+
 
 }))}(document, Math));
